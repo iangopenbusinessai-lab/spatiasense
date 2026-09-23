@@ -121,3 +121,28 @@ button.quiet { padding: 6px 12px; }
 .trials tr.best td { font-weight: 600; }
 .history .trials { display: block; overflow-x: auto; }
 .note { color: var(--muted); font-size: 0.9rem; }
+
+/* Charts: over/undershoot are told apart by position and signed labels;
+   series by marker shape. Color is only a secondary cue. */
+:root { --series-0: #2d5bd7; --series-1: #b4561b; --series-2: #148c5a; }
+@media (prefers-color-scheme: dark) {
+  :root { --series-0: #7c9cff; --series-1: #f0955a; --series-2: #48c88c; }
+}
+.chart-figure { margin: 0 0 24px; }
+.chart { display: block; width: 100%; max-width: 640px; height: auto; background: var(--panel); border-radius: 10px; }
+.chart .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
+.chart .zero { stroke: var(--fg); stroke-width: 2.5; }
+.chart .tick { fill: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+.chart .axis-title, .chart .direction { fill: var(--muted); font-size: 13px; }
+.chart .mark { stroke-width: 2.5; }
+.chart .whisker line { stroke-width: 2; }
+.series-0 { fill: var(--series-0); stroke: var(--series-0); }
+.series-1 { fill: var(--series-1); stroke: var(--series-1); }
+.series-2 { fill: var(--series-2); stroke: var(--series-2); }
+.mark.hollow { fill: var(--panel); }
+.chart .rolling { fill: none; stroke: var(--accent); stroke-width: 2.5; }
+.chart .round-dot { fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--muted); font-size: 0.85rem; margin-top: 6px; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; }
+.legend-mark { width: 14px; height: 14px; }
+.legend-mark .mark { stroke-width: 2; }

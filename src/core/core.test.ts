@@ -66,7 +66,19 @@ describe("scoring", () => {
   });
 
   it("summarizes a round", () => {
-    const t = (signed: number) => ({ signedErrorPct: signed, absErrorPct: Math.abs(signed), score: scoreFromErrorPct(signed) }) as TrialResult;
+    const t = (signed: number): TrialResult => ({
+      taskId: "multiply",
+      params: {},
+      seed: 0,
+      trueValue: 100,
+      response: 100 + signed,
+      signedErrorPct: signed,
+      absErrorPct: Math.abs(signed),
+      score: scoreFromErrorPct(signed),
+      hitLimit: false,
+      responseMs: 0,
+      timestamp: 0,
+    });
     const s = summarize([t(10), t(-2), t(-20)]);
     expect(s.meanSignedErrorPct).toBeCloseTo(-4, 9);
     expect(s.meanAbsErrorPct).toBeCloseTo(32 / 3, 9);
