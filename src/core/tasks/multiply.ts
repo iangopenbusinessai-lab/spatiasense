@@ -10,6 +10,8 @@ export const MIN_REF_LENGTH = 30;
 export const BAR_H = 16;
 /** Right-most allowed x for anything on the track, including the answer marker. */
 export const TRACK_MAX_X = VIEW_W - MARGIN;
+/** A confirmed marker within this distance of TRACK_MAX_X counts as hitting the limit. */
+export const HIT_LIMIT_TOLERANCE = 0.5;
 
 export type Layout = "anchored" | "detached";
 
@@ -95,7 +97,8 @@ function generate(params: MultiplyParams, rng: Rng): MultiplyTrial {
 
 function score(trial: MultiplyTrial, response: MultiplyResponse) {
   const trueLength = trial.n * trial.refLength;
-  const answerLength = clampMarker(trial, response) - trial.origin;
+  const markerX = clampMarker(trial, response);
+  const answerLength = markerX - trial.origin;
   const signed = signedErrorPct(answerLength, trueLength);
   return {
     params: { n: trial.n, layout: trial.layout },
@@ -104,6 +107,7 @@ function score(trial: MultiplyTrial, response: MultiplyResponse) {
     signedErrorPct: signed,
     absErrorPct: Math.abs(signed),
     score: scoreFromErrorPct(signed),
+    hitLimit: markerX >= TRACK_MAX_X - HIT_LIMIT_TOLERANCE,
   };
 }
 

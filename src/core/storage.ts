@@ -31,6 +31,9 @@ function parseTrial(v: unknown): TrialResult | null {
   if (!isRecord(v) || !("params" in v)) return null;
   const { taskId, params, seed, trueValue, response, signedErrorPct, absErrorPct, score, responseMs, timestamp } = v;
   if (typeof taskId !== "string") return null;
+  // Added in session 2 (additive, no version bump): missing means false.
+  const hitLimit = v.hitLimit === undefined ? false : v.hitLimit;
+  if (typeof hitLimit !== "boolean") return null;
   if (
     !isFiniteNumber(seed) ||
     !isFiniteNumber(trueValue) ||
@@ -43,7 +46,7 @@ function parseTrial(v: unknown): TrialResult | null {
   ) {
     return null;
   }
-  return { taskId, params, seed, trueValue, response, signedErrorPct, absErrorPct, score, responseMs, timestamp };
+  return { taskId, params, seed, trueValue, response, signedErrorPct, absErrorPct, score, hitLimit, responseMs, timestamp };
 }
 
 function parseRound(v: unknown): RoundRecord | null {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clientToViewBox } from "./geometry";
 import { hashSeeds, mulberry32, randInt, trialSeed } from "./rng";
-import { formatSignedError, scoreFromErrorPct, signedErrorPct, summarize } from "./scoring";
+import { formatSignedError, formatTrialError, scoreFromErrorPct, signedErrorPct, summarize } from "./scoring";
 import { ROUNDS_KEY, appendRound, parseRounds, serializeRounds } from "./storage";
 import type { RoundRecord, TrialResult } from "./types";
 
@@ -61,6 +61,8 @@ describe("scoring", () => {
     expect(formatSignedError(8.26)).toBe("+8.3% — overshot");
     expect(formatSignedError(-4)).toBe("−4.0% — undershot");
     expect(formatSignedError(0.01)).toBe("0.0% — exact");
+    expect(formatTrialError({ signedErrorPct: 31.24, hitLimit: true })).toBe("≥ +31.2% — hit the edge");
+    expect(formatTrialError({ signedErrorPct: -4, hitLimit: false })).toBe("−4.0% — undershot");
   });
 
   it("summarizes a round", () => {
@@ -83,6 +85,7 @@ describe("storage", () => {
     signedErrorPct: 5,
     absErrorPct: 5,
     score: 90,
+    hitLimit: false,
     responseMs: 1200,
     timestamp: 5000,
   };
@@ -121,6 +124,19 @@ describe("storage", () => {
     const out = parseRounds(raw);
     expect(out.rounds).toEqual([round]);
     expect(out.problems).toHaveLength(1);
+  });
+
+  it("session-1 rounds (no hitLimit field) load as hitLimit: false", () => {
+    const { hitLimit: _omit, ...oldTrial } = trial;
+    const raw = JSON.stringify({ version: 1, rounds: [{ ...round, trials: [oldTrial] }] });
+    const out = parseRounds(raw);
+    expect(out.problems).toEqual([]);
+    expect(out.rounds[0]?.trials[0]?.hitLimit).toBe(false);
+  });
+
+  it("drops a round whose hitLimit is not a boolean", () => {
+    const raw = JSON.stringify({ version: 1, rounds: [{ ...round, trials: [{ ...trial, hitLimit: "yes" }] }] });
+    expect(parseRounds(raw).rounds).toEqual([]);
   });
 
   it("appendRound is idempotent by id", () => {

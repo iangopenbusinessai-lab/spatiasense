@@ -1,4 +1,4 @@
-import { formatSignedError, summarize } from "../core/scoring";
+import { formatTrialError, summarize } from "../core/scoring";
 import type { TrialResult } from "../core/types";
 
 interface ResultsProps {
@@ -19,6 +19,13 @@ export function Results({ label, results, saveFailed, onAgain, onHome }: Results
       <h1>Round complete</h1>
       <p className="lede">{label}</p>
       {saveFailed && <p className="warning">This round couldn't be saved to history (browser storage unavailable).</p>}
+
+      {s.censoredCount > 0 && (
+        <p className="note">
+          {s.censoredCount} {s.censoredCount === 1 ? "trial" : "trials"} hit the right edge, so the real overshoot was
+          larger than recorded. Averages count {s.censoredCount === 1 ? "it" : "them"} at the recorded value.
+        </p>
+      )}
 
       <dl className="stats">
         <div>
@@ -52,7 +59,7 @@ export function Results({ label, results, saveFailed, onAgain, onHome }: Results
           {results.map((r, i) => (
             <tr key={r.seed} className={i === s.bestIndex ? "best" : undefined}>
               <td>{i + 1}</td>
-              <td>{formatSignedError(r.signedErrorPct)}</td>
+              <td>{formatTrialError(r)}</td>
               <td>{r.score}</td>
               <td>{(r.responseMs / 1000).toFixed(1)}s</td>
             </tr>

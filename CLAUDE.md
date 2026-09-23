@@ -84,6 +84,7 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
      signedErrorPct: number;
      absErrorPct: number;
      score: number;
+     hitLimit: boolean;      // response sat at the input limit → censored
    }
    ```
    The session builds `TrialResult = TrialScore + { taskId, seed, responseMs,
@@ -118,7 +119,7 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
    actions for the current state are ignored, never thrown.
 
 6. Every trial produces a `TrialResult` with: `taskId, params, seed, trueValue,
-   response, signedErrorPct, absErrorPct, score, responseMs, timestamp`.
+   response, signedErrorPct, absErrorPct, score, hitLimit, responseMs, timestamp`.
    SIGNED error is mandatory — bias direction is the product's core insight.
    `params` stores RESOLVED values: if n was `"random"`, record the n drawn.
 
@@ -151,6 +152,8 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
   The reference bar must itself fit inside the viewBox with the 40-unit margin
   (checked by the 1000-seed fit test).
 - **No landmarks:** no gridlines, ticks, rulers, or anything else to measure by.
+- **hitLimit:** true when the confirmed marker is within 0.5 units of the
+  clamp maximum (`1000 - 40`).
 - **Response:** click or drag a marker along the track, adjust, confirm with
   a button or Enter. Marker x clamped to `[origin, 1000 - 40]`. Dragging uses
   pointer capture so the marker keeps tracking when the pointer leaves the bar.
@@ -287,6 +290,18 @@ Choices the spec didn't dictate, with a one-line reason.
   Round id = `${startedAt base36}-${roundSeed base36}`; saving is idempotent by id.
 - **Confirm button is HTML below the SVG**, so the detached reference can
   never overlap it.
+- **`hitLimit` added to TrialScore/TrialResult (session 2), additive — NO
+  storage version bump.** Stored trials without the field parse as
+  `hitLimit: false`; a non-boolean value drops the round.
+- **Censored trials are KEPT in means at their recorded value** (the stats
+  call them `censored`). Ian's original directive was to exclude them; that
+  was wrong: a hitLimit trial is an overshoot whose real error is LARGER than
+  recorded, so dropping it removes a big positive value and biases the mean
+  toward undershoot even more than keeping the lower bound does (true
+  +40,0,0 clamped at +30: truth 13.3, keep 10, drop 0). Since the recorded
+  mean is a lower bound, overshoot claims stay safe; undershoot and
+  "well calibrated" claims are suppressed where the censored fraction is
+  above `MAX_CENSORED_FRACTION`.
 - **roundSeed** comes from `crypto.getRandomValues` in `App.tsx` (outside core).
 
 ## Session log

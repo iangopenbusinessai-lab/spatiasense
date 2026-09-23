@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MARGIN, VIEW_H, VIEW_W } from "../geometry";
 import { mulberry32 } from "../rng";
-import { BAR_H, OVERSHOOT_ROOM, N_MAX, N_MIN, TRACK_MAX_X, multiply, trueEndX, type Layout, type MultiplyParams } from "./multiply";
+import { BAR_H, HIT_LIMIT_TOLERANCE, OVERSHOOT_ROOM, N_MAX, N_MIN, TRACK_MAX_X, multiply, trueEndX, type Layout, type MultiplyParams } from "./multiply";
 
 const layouts: Layout[] = ["anchored", "detached"];
 const nChoices: MultiplyParams["n"][] = [2, 3, 4, 5, 6, 7, 8, "random"];
@@ -114,6 +114,14 @@ describe("multiply.score", () => {
   it("response is clamped to [origin, 960]", () => {
     expect(multiply.score(trial, -500).response).toBe(0);
     expect(multiply.score(trial, 5000).response).toBeCloseTo(TRACK_MAX_X - trial.origin, 9);
+  });
+
+  it("sets hitLimit at the clamp edge, not 1 unit inside it", () => {
+    expect(multiply.score(trial, TRACK_MAX_X).hitLimit).toBe(true);
+    expect(multiply.score(trial, 5000).hitLimit).toBe(true);
+    expect(multiply.score(trial, TRACK_MAX_X - HIT_LIMIT_TOLERANCE).hitLimit).toBe(true);
+    expect(multiply.score(trial, TRACK_MAX_X - 1).hitLimit).toBe(false);
+    expect(multiply.score(trial, trueEndX(trial)).hitLimit).toBe(false);
   });
 
   it("records resolved params, not 'random'", () => {

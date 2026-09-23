@@ -14,23 +14,27 @@ export interface RoundSummary {
   meanAbsErrorPct: number;
   meanSignedErrorPct: number;
   meanScore: number;
+  /** Trials whose response hit the input limit (their real error was larger). */
+  censoredCount: number;
   /** Index of the trial with the smallest |error|, or -1 when empty. */
   bestIndex: number;
 }
 
 export function summarize(trials: readonly TrialResult[]): RoundSummary {
   if (trials.length === 0) {
-    return { count: 0, meanAbsErrorPct: 0, meanSignedErrorPct: 0, meanScore: 0, bestIndex: -1 };
+    return { count: 0, meanAbsErrorPct: 0, meanSignedErrorPct: 0, meanScore: 0, censoredCount: 0, bestIndex: -1 };
   }
   let abs = 0;
   let signed = 0;
   let score = 0;
+  let censoredCount = 0;
   let bestIndex = 0;
   let bestAbs = Infinity;
   trials.forEach((t, i) => {
     abs += t.absErrorPct;
     signed += t.signedErrorPct;
     score += t.score;
+    if (t.hitLimit) censoredCount++;
     if (t.absErrorPct < bestAbs) {
       bestAbs = t.absErrorPct;
       bestIndex = i;
@@ -42,6 +46,7 @@ export function summarize(trials: readonly TrialResult[]): RoundSummary {
     meanAbsErrorPct: abs / n,
     meanSignedErrorPct: signed / n,
     meanScore: score / n,
+    censoredCount,
     bestIndex,
   };
 }
@@ -52,4 +57,11 @@ export function formatSignedError(signedPct: number): string {
   if (rounded === 0) return "0.0% — exact";
   const sign = rounded > 0 ? "+" : "−";
   return `${sign}${Math.abs(rounded).toFixed(1)}% — ${rounded > 0 ? "overshot" : "undershot"}`;
+}
+
+/** Like formatSignedError, but marks censored trials: "≥ +31.2% — hit the edge". */
+export function formatTrialError(trial: Pick<TrialResult, "signedErrorPct" | "hitLimit">): string {
+  if (!trial.hitLimit) return formatSignedError(trial.signedErrorPct);
+  const rounded = Math.round(trial.signedErrorPct * 10) / 10;
+  return `≥ +${Math.abs(rounded).toFixed(1)}% — hit the edge`;
 }

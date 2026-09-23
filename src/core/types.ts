@@ -9,6 +9,11 @@ export interface TrialScore<P> {
   signedErrorPct: number;
   absErrorPct: number;
   score: number;
+  /**
+   * The response sat at the input's limit, so the real error was at least
+   * this large (censored). Such a recorded value is a lower bound.
+   */
+  hitLimit: boolean;
 }
 
 /** A stored trial: TrialScore plus the session-owned fields. */

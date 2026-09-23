@@ -1,5 +1,5 @@
 import { useEffect, type Dispatch } from "react";
-import { formatSignedError } from "../core/scoring";
+import { formatTrialError } from "../core/scoring";
 import type { SessionAction, SessionState } from "../core/session";
 import type { AnyTask } from "../tasks/registry";
 
@@ -66,7 +66,7 @@ export function Play({ task, state, dispatch }: PlayProps) {
         {phase === "feedback" && last && (
           <>
             <span className={`verdict ${last.signedErrorPct > 0 ? "over" : "under"}`}>
-              {formatSignedError(last.signedErrorPct)} · score {last.score}
+              {formatTrialError(last)} · score {last.score}
             </span>
             <button className="primary" autoFocus onClick={() => dispatch({ type: "next", now: Date.now() })}>
               {isLast ? "See results" : "Next"}
