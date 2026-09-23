@@ -365,14 +365,27 @@ Only verified facts. Each line says HOW it was verified.
   trial (drag + Enter) → "−0.1% — undershot · score 100" with 6 ghosts.
 - Built `dist/index.html` has no root-absolute URL outside `/spatiasense/`
   (grep).
+- LIVE (deploy session, push of 3881c50): Pages source switched to
+  `build_type=workflow` (`gh api`); Actions run 35836740764 — build ✅
+  (171 tests passed in CI, then build), deploy ✅ (`gh run watch`).
+  `curl -I` → 200 for https://iangopenbusinessai-lab.github.io/spatiasense/,
+  its JS (`index-DP3irSSw.js`, same hash as local), CSS and favicon.svg.
+- LIVE play in Chrome (desktop): page/JS/CSS 200 in the network log; one
+  trial confirmed with Enter → "+0.5% — overshot · score 99", 6 ghosts and
+  the true endpoint drawn. Drag + pointer capture verified by an event log:
+  pointerdown → gotpointercapture → pointermove×3 (button held) → pointerup
+  → lostpointercapture, marker ended at the drag end. (Two earlier automated
+  drags dropped their moves — a tool artifact, not the app.) No
+  `spatiasense:` key was written (round quit before 10 trials).
 
 ### Open / unverified
 
 - UI not yet exercised in a real browser (the Chrome extension was not
   connected in session 1): drag, pointer capture, Enter-to-confirm, phone
   layout, and History are unverified by hand.
-- LIVE DEPLOY PENDING: workflow and Pages switch not yet run (waiting for
-  Ian's "push"). Live URL, per-job CI result, and live-site play unverified.
+- Nothing Spatiasense-specific is open for the deploy itself. Still open from
+  earlier sessions: phone (touch) play, History with real rounds, Insight
+  with real rounds.
 - Insight with REAL played rounds not checked in a browser (only demo data
   and unit tests with stored-round JSON).
 - Trend detection is weak for gradual learning (4% at 200 trials): a design
@@ -485,3 +498,4 @@ Choices the spec didn't dictate, with a one-line reason.
 - **Deploy session:** Vercel → GitHub Pages via Actions; Vite base path;
   favicon; shared-origin storage guard test; CLAUDE.md deploy flow. Found
   the repo PUBLIC (Ian's change) and Pages already on a legacy branch build.
+  Pushed on Ian's "push"; CI green; live site verified (see STATUS).
