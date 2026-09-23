@@ -179,6 +179,47 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
 - **Play:** the task view.
 - **Results:** mean |error|, mean signed bias, best trial, per-trial list.
 - **History:** rounds from localStorage, newest first, mean bias per round.
+- **Insight** ("Your bias", linked from Home, Results, History): findings
+  sentences → BiasChart (x/series selectors from `insightDimensions`) →
+  TrendChart (bias per round + rolling average) → per-group table. Empty
+  state says what to do. DEV-only "Load demo player" shows sim data IN
+  MEMORY ONLY; the screen has no path to storage writes.
+
+## Insight engine (`src/core/insight.ts`)
+
+Rules (all enforced by tests; the engine stays SILENT when in doubt):
+- Groups ONLY by a task's `insightDimensions`; imports nothing from
+  `core/tasks/` (guard test).
+- Censored (`hitLimit`) trials are KEPT at their recorded value and counted
+  as `censored`; undershoot and "well calibrated" claims are withheld when
+  the censored fraction exceeds `MAX_CENSORED_FRACTION`.
+- Ordinal groups with enough data are classed by point estimate (over /
+  under / near ±`MIN_BIAS_PCT`); adjacent same-class groups merge into a
+  range; a thin group breaks a range. The POOLED range is then tested.
+  Category groups stand alone (only if the dimension has 2+ values).
+- Bonferroni: the family is EVERY claim tested in a pass (bias ranges,
+  accurate ranges, trends). Claim alpha = `FAMILY_ALPHA / familySize`.
+- bias: Student-t interval at claim alpha excludes 0 AND |mean| ≥ MIN_BIAS_PCT.
+- accurate: the claim-alpha interval lies inside ±`ACCURATE_BAND_PCT`.
+- trend: last `TREND_WINDOW` trials vs the window before, Welch t-test at
+  claim alpha, AND |bias| changed by ≥ MIN_BIAS_PCT. "improving" if |bias|
+  shrank, "worsening" (phrased neutrally) if it grew.
+- needsData: thin groups, smallest first, at most MAX_NEEDS_DATA_FINDINGS.
+- Displayed intervals are 95% Student-t (not ±1.96).
+
+Thresholds — the ONLY tunables, all in the exported `INSIGHT` object:
+
+| Constant                  | Value | Meaning |
+| ------------------------- | ----- | ------- |
+| `MIN_TRIALS_PER_GROUP`    | 8     | trials before any claim; below → hollow dot, needsData |
+| `MIN_BIAS_PCT`            | 3     | smallest \|mean\| called a bias; class boundary for merging |
+| `ACCURATE_BAND_PCT`       | 5     | "well calibrated" interval must sit inside ±this |
+| `TREND_WINDOW`            | 20    | trials per trend window (needs 2× in scope) |
+| `FAMILY_ALPHA`            | 0.05  | family-wise error rate, Bonferroni-split |
+| `CI_LEVEL`                | 0.95  | level of intervals shown to the player |
+| `MAX_CENSORED_FRACTION`   | 0.10  | above this, withhold undershoot/accurate claims |
+| `MAX_NEEDS_DATA_FINDINGS` | 2     | "play more" prompts shown at once |
+| `ROLLING_ROUNDS`          | 5     | TrendChart rolling-average window |
 
 ---
 
@@ -193,6 +234,10 @@ src/
     session.ts     reducer state machine
     scoring.ts     shared error/score math + round aggregates
     storage.ts     versioned serialize/parse
+    stats.ts       mean, sample SD, Student-t CDF/quantile (no library)
+    insight.ts     insight engine: groups by task-declared dimensions ONLY
+    insightText.ts findings → plain English
+    sim.ts         seeded synthetic players (tests + dev demo)
     tasks/
       multiply.ts  generate + score for "multiply"
   tasks/
@@ -201,8 +246,12 @@ src/
     multiply/
       View.tsx     SVG rendering + input for "multiply"
       Settings.tsx params form for "multiply"
+  lib/
+    chartMath.ts   pure scales/ticks/symmetric axis/rolling mean (tested)
+  components/
+    charts/        ChartFrame, BiasChart, TrendChart (hand-rolled SVG)
   screens/
-    Home.tsx  Play.tsx  Results.tsx  History.tsx
+    Home.tsx  Play.tsx  Results.tsx  History.tsx  Insight.tsx
   persistence.ts   thin localStorage wrapper around core/storage
   App.tsx          screen switching via state
 ```
@@ -241,7 +290,11 @@ the `src/**/*.test.ts` include in `vite.config.ts`).
 
 Ideas parked mid-session go here, not into the code:
 
-- _(none yet)_
+- Trend by regression slope over all trials in a scope (much more power for
+  gradual learning than two adjacent 20-trial windows — see STATUS).
+- Shrinkage estimates across adjacent n, so sparse n values borrow strength
+  instead of going silent.
+- Suppress category findings that just restate an ordinal range.
 
 ---
 
@@ -251,6 +304,32 @@ Only verified facts. Each line says HOW it was verified.
 
 ### Verified
 
+- Session 2: `npm run build` clean and `npm run test` 87/87 pass — run at
+  end of session 2 (commit b339751).
+- Insight rates, measured over seeded sims (noise SD 10 pp unless noted):
+  - V1 truth recovery, −12% at n 5–8 / 0% at n 2–4: bias finding for n 5–8
+    within ±3 of −12 in 94% of seeds at 200 trials (97% at SD 8). The FULL
+    check (+ "well calibrated for n 2–4") needs more data: 64% at 200,
+    79% at 300, **95% at 400 trials** (SD 8: 83% / 96% / 99%). Thresholds
+    were NOT loosened; the test asserts ≥ 90% at 400 trials.
+  - V2 false positives, unbiased player, 100 trials, full pipeline: a bias
+    claim in **11/200 = 5.5%** of seeds; a trend claim in 1/200 = 0.5%.
+  - Trend false positives, flat player, 200 trials: 2/200 = 1.0% (bias 0),
+    5/200 = 2.5% (bias −8%).
+  - Trend power: improving −15→−3% over 40 trials: 68% (SD 6), 21% (SD 10);
+    over 200 trials (gradual): **4%**. Worsening −3→−15% over 40 (SD 6): 76%.
+  - V3 small samples → only needsData; V4 hitLimit set at the clamp edge and
+    not 1 unit inside, censored counted, undershoot claim withheld above 10%;
+    V6 a session-1 round (no hitLimit) loads and feeds the engine. Unit tests.
+  - V7: insight.ts / insightText.ts / stats.ts import nothing from
+    `core/tasks/`; the core purity guard now self-tests its patterns.
+- Browser (Chrome extension, session 2, dev server): Insight screen with the
+  demo player at 1440px and at 390px (a 390px same-origin iframe, since the
+  window would not shrink): findings render; x/series selectors work; split
+  by layout shows 2 hollow groups; no horizontal page scroll at 390px (the
+  table scrolls in its own box); chart ticks ≈12.6px at 390px; a
+  `Storage.prototype.setItem` spy recorded **0 writes** and localStorage
+  stayed empty after loading the demo.
 - `npm run build` passes (tsc strict + vite build) — run at end of session 1.
 - `npm run test`: 39 tests pass — run at end of session 1. Covers: rng
   determinism; pointer→viewBox at 390px and 1440px widths; scoring math;
@@ -268,6 +347,12 @@ Only verified facts. Each line says HOW it was verified.
   connected in session 1): drag, pointer capture, Enter-to-confirm, phone
   layout, and History are unverified by hand.
 - Not deployed; Vercel not yet connected.
+- Insight with REAL played rounds not checked in a browser (only demo data
+  and unit tests with stored-round JSON).
+- Trend detection is weak for gradual learning (4% at 200 trials): a design
+  limit of adjacent-window comparison, not a bug. See parked ideas.
+- "Well calibrated" for a 3-value range needs ~400 trials at SD 10; players
+  will see bias findings long before calibration credit.
 
 ---
 
@@ -312,6 +397,36 @@ Choices the spec didn't dictate, with a one-line reason.
   interface change.** The insight engine groups ONLY by dimensions the task
   declares, so a new task never requires editing the engine. `defineTask`
   erases them (always an array on `AnyTaskCore`).
+- **Student-t + Bonferroni (session 2, approved)** instead of mean ±1.96·sd/√n.
+  Measured per-group: ±1.96 false-alarmed in 26–45% of unbiased seeds;
+  Bonferroni with z ≈ 10%; t + Bonferroni ≈ 4%; full pipeline 5.5%.
+  Family = every claim tested in a pass (Ian's addition).
+- **Trend test = Welch two-sample t at claim alpha**, not "difference vs each
+  window's CI": the latter false-alarmed 8.5% on a flat −8% player (now 2.5%).
+  Welch's interval is wider than either window's, so a claimed change is
+  outside both windows' noise.
+- **"Well calibrated" = claim interval inside ±5%** (equivalence), not merely
+  "not significant" — absence of evidence would otherwise earn credit.
+- **Ordinal merging uses point estimates, then tests the pooled range**; thin
+  groups break ranges; adjacency is among OBSERVED groups (the engine can't
+  know unobserved n exist).
+- **Category claims need 2+ observed values** (else the group = all trials);
+  same rule for category needsData.
+- **Unreadable stored params skip that trial** for that dimension; never throw.
+- **`simulatePlayer` returns `{ rounds, trials }`** (TrendChart is per round);
+  `improvementPerTrial` = pp per trial toward 0; layout random per round.
+- **Results shows a censored note**; feedback reads "≥ +31.2% — hit the edge".
+- **Charts:** viewBox 380×270, max-width 560px; over/undershoot shown by
+  position plus signed tick labels and ↑/↓ words; series by marker SHAPE;
+  groups below MIN_TRIALS_PER_GROUP hollow.
+- **No casts outside `defineTask`, tests included**: session tests use the
+  registry's erased core; two session-1 test casts removed.
+- **Session-1 purity guard was broken**: a Python edit wrote a literal
+  backspace for the regex word boundary in the DOM check, so it never
+  matched. Fixed; the guard now self-tests every pattern. Lesson: edit with
+  the Edit tool or raw strings, never escape-processed Python strings.
+- **Dev server port**: 5199 is used by another local project (strategylab);
+  use another port (5231 worked). Never kill that server.
 - **roundSeed** comes from `crypto.getRandomValues` in `App.tsx` (outside core).
 
 ## Session log
@@ -322,3 +437,8 @@ Choices the spec didn't dictate, with a one-line reason.
   geometry, scoring, session, storage, multiply) with tests, registry, the
   multiply View/Settings, and Home/Play/Results/History screens. Changed
   multiply generation to leave overshoot room (see decisions).
+- **Session 2 (insight):** hitLimit (kept-and-guarded, not excluded),
+  insightDimensions, t-statistics, insight engine + text, seeded sim,
+  chartMath, BiasChart/TrendChart, Insight screen with dev demo. 7 commits
+  (5119d8b…b339751), not pushed. Rates measured and recorded in STATUS.
+  Fixed the silently broken purity guard from session 1.
