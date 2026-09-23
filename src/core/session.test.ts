@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { initialSession, sessionReducer, toRoundRecord, type SessionAction, type SessionState } from "./session";
-import { multiply, trueEndX, type MultiplyParams, type MultiplyTrial } from "./tasks/multiply";
-import type { AnyTaskCore } from "./types";
+import { mulberry32 } from "./rng";
+import { multiply, trueEndX } from "./tasks/multiply";
+import { findTask } from "../tasks/registry";
 
-// Test-only erasure, mirroring what defineTask does in the registry.
-const core: AnyTaskCore = {
-  id: multiply.id,
-  label: multiply.label,
-  defaultParams: multiply.defaultParams,
-  generate: (p, rng) => multiply.generate(p as MultiplyParams, rng),
-  score: (t, r) => multiply.score(t as MultiplyTrial, r as number),
-};
+// The registry's erased core: tests use the same single erasure point as the app.
+const registered = findTask("multiply");
+if (!registered) throw new Error("multiply not registered");
+const core = registered.core;
 
 const start = (roundSeed = 123, trialCount = 3): SessionAction => ({
   type: "start",
@@ -50,7 +47,10 @@ describe("sessionReducer", () => {
   it("full flow produces TrialResults with all required fields", () => {
     let s = run(initialSession, start(5, 2));
     if (s.phase !== "showing") throw new Error("expected showing");
-    const end = trueEndX(s.current.trial as MultiplyTrial);
+    // Regenerate the trial alone from its seed (typed, and proves rule 3).
+    const regenerated = multiply.generate({ n: "random", layout: "anchored" }, mulberry32(s.current.seed));
+    expect(regenerated).toEqual(s.current.trial);
+    const end = trueEndX(regenerated);
     s = run(s, { type: "respond", response: 100 }, { type: "respond", response: end });
     expect(s.phase).toBe("answering");
     s = run(s, { type: "confirm", now: 1750 });
@@ -59,7 +59,7 @@ describe("sessionReducer", () => {
     const r = s.results[0];
     expect(r).toMatchObject({ taskId: "multiply", score: 100, responseMs: 750, timestamp: 1750 });
     expect(r?.seed).toBe(s.current.seed);
-    expect((r?.params as { n: unknown }).n).toBeTypeOf("number");
+    expect(r?.params).toEqual({ n: regenerated.n, layout: "anchored" });
     s = run(s, { type: "next", now: 2000 }, { type: "respond", response: 300 }, { type: "confirm", now: 2500 });
     s = run(s, { type: "next", now: 2600 });
     expect(s.phase).toBe("results");

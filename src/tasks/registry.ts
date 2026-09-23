@@ -27,6 +27,12 @@ function defineTask<P, T, R>(
       defaultParams: core.defaultParams,
       generate: (params, rng) => core.generate(params as P, rng),
       score: (trial, response) => core.score(trial as T, response as R),
+      insightDimensions: (core.insightDimensions ?? []).map((d) => ({
+        key: d.key,
+        label: d.label,
+        kind: d.kind,
+        extract: (params: unknown) => d.extract(params as P),
+      })),
     },
     View: View as unknown as ComponentType<ViewProps<unknown, unknown>>,
     Settings: Settings as unknown as ComponentType<SettingsProps<unknown>>,

@@ -83,6 +83,19 @@ describe("multiply.generate", () => {
   });
 });
 
+describe("multiply.insightDimensions", () => {
+  it("declares n (ordinal) and layout (category) read from resolved params", () => {
+    const dims = multiply.insightDimensions ?? [];
+    expect(dims.map((d) => [d.key, d.kind])).toEqual([
+      ["n", "ordinal"],
+      ["layout", "category"],
+    ]);
+    const t = multiply.generate({ n: "random", layout: "detached" }, mulberry32(11));
+    const { params } = multiply.score(t, trueEndX(t));
+    expect(dims.map((d) => d.extract(params))).toEqual([t.n, "detached"]);
+  });
+});
+
 describe("multiply.score", () => {
   const trial = multiply.generate({ n: 5, layout: "anchored" }, mulberry32(7));
   const trueLength = trial.n * trial.refLength;

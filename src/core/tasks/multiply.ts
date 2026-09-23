@@ -117,4 +117,8 @@ export const multiply: TaskType<MultiplyParams, MultiplyTrial, MultiplyResponse>
   defaultParams: { n: 6, layout: "anchored" },
   generate,
   score,
+  insightDimensions: [
+    { key: "n", label: "n", kind: "ordinal", extract: (p) => p.n },
+    { key: "layout", label: "layout", kind: "category", extract: (p) => p.layout },
+  ],
 };

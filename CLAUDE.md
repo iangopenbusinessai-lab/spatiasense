@@ -76,6 +76,11 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
      defaultParams: P;
      generate(params: P, rng: Rng): T;
      score(trial: T, response: R): TrialScore<P>;
+     insightDimensions?: Array<{            // how insight may group trials
+       key: string; label: string;
+       kind: "ordinal" | "category";
+       extract(params: P): number | string; // reads RESOLVED params
+     }>;
    }
    interface TrialScore<P> {
      params: P;              // RESOLVED values (e.g. the n actually drawn)
@@ -209,7 +214,8 @@ the `src/**/*.test.ts` include in `vite.config.ts`).
 
 1. Create `src/core/tasks/<id>.ts` exporting a `TaskType<P, T, R>`:
    params type, trial type, response type, `generate`, `score`. Use only the
-   passed-in `rng`. All geometry in viewBox units.
+   passed-in `rng`. All geometry in viewBox units. Declare
+   `insightDimensions` for anything worth grouping bias by.
 2. Write its tests: same seed → same trial; every generated trial fits the
    viewBox with margin across 1000 seeds; perfect response → score 100;
    known over/undershoot → correct signed error sign and size.
@@ -302,6 +308,10 @@ Choices the spec didn't dictate, with a one-line reason.
   mean is a lower bound, overshoot claims stay safe; undershoot and
   "well calibrated" claims are suppressed where the censored fraction is
   above `MAX_CENSORED_FRACTION`.
+- **`insightDimensions` added to TaskType (session 2) — planned one-time
+  interface change.** The insight engine groups ONLY by dimensions the task
+  declares, so a new task never requires editing the engine. `defineTask`
+  erases them (always an array on `AnyTaskCore`).
 - **roundSeed** comes from `crypto.getRandomValues` in `App.tsx` (outside core).
 
 ## Session log
