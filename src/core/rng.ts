@@ -36,3 +36,10 @@ export function randRange(rng: Rng, min: number, max: number): number {
 export function randInt(rng: Rng, min: number, max: number): number {
   return min + Math.floor(rng() * (max - min + 1));
 }
+
+/** Standard normal draw (Box–Muller), using two draws from the seeded rng. */
+export function randNormal(rng: Rng): number {
+  const u = 1 - rng(); // (0, 1] so log is finite
+  const v = rng();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+}

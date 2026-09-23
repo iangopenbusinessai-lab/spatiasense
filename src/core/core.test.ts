@@ -156,9 +156,29 @@ describe("core purity", () => {
     expect(files.length).toBeGreaterThan(5);
   });
 
+  const BANNED = [/Math\.random|Date\.now|new Date\(/, /from ["']react|from ["']react-dom/, /\b(window|document|localStorage)\./];
+  const TASK_IMPORT = /from\s+["'][^"']*tasks\//;
+
+  it("guard patterns actually fire (self-test)", () => {
+    const samples = ["Math.random()", 'import x from "react";', "window.addEventListener", "localStorage.getItem"];
+    for (const sample of samples) expect(BANNED.some((re) => re.test(sample))).toBe(true);
+    expect(TASK_IMPORT.test('import { multiply } from "./tasks/multiply";')).toBe(true);
+    expect(BANNED.some((re) => re.test("const windowSize = 3;"))).toBe(false);
+  });
+
   it.each(files)("%s uses no Math.random, Date.now, React, or DOM access", (_file, src) => {
-    expect(src).not.toMatch(/Math\.random|Date\.now|new Date\(/);
-    expect(src).not.toMatch(/from ["']react|from ["']react-dom/);
-    expect(src).not.toMatch(/(window|document|localStorage)\./);
+    for (const re of BANNED) expect(src).not.toMatch(re);
+  });
+
+  // The engine only ever sees task-declared dimensions, never a task module.
+  const engine = files.filter(([file]) => /\/(insight|insightText|stats)\.ts$/.test(file));
+
+  it("finds the insight engine files", () => {
+    expect(engine.map(([f]) => f).sort()).toEqual(["./insight.ts", "./stats.ts"]);
+  });
+
+  it.each(engine)("%s imports nothing from core/tasks", (_file, src) => {
+    expect(src).not.toMatch(TASK_IMPORT);
+    expect(src).not.toMatch(/multiply/);
   });
 });
