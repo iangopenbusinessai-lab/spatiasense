@@ -174,7 +174,7 @@ describe("core purity", () => {
   const engine = files.filter(([file]) => /\/(insight|insightText|stats)\.ts$/.test(file));
 
   it("finds the insight engine files", () => {
-    expect(engine.map(([f]) => f).sort()).toEqual(["./insight.ts", "./stats.ts"]);
+    expect(engine.map(([f]) => f).sort()).toEqual(["./insight.ts", "./insightText.ts", "./stats.ts"]);
   });
 
   it.each(engine)("%s imports nothing from core/tasks", (_file, src) => {
