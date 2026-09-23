@@ -1,4 +1,4 @@
-# Spatial Trainer — CLAUDE.md
+# Spatiasense — CLAUDE.md
 
 > This file was seeded BEFORE session 1 and is the project's source of truth.
 > Read it in full at the start of every session. UPDATE it, never rewrite it
@@ -44,7 +44,7 @@ central and (b) preserves data needed for bias-over-time analysis.
   PowerShell. Chain commands with `;` — not `&&` (PowerShell 5.1 lacks it).
 - NEVER run a command that waits for interactive input; it hangs the session.
   Use non-interactive flags, or write files by hand.
-- GitHub: `iangopenbusinessai-lab/spatial-trainer` (private). `gh` is authenticated.
+- GitHub: `iangopenbusinessai-lab/spatiasense` (private). `gh` is authenticated.
 
 ## Deploy
 
@@ -75,12 +75,23 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
      label: string;
      defaultParams: P;
      generate(params: P, rng: Rng): T;
-     score(trial: T, response: R): TrialResult;
+     score(trial: T, response: R): TrialScore<P>;
+   }
+   interface TrialScore<P> {
+     params: P;              // RESOLVED values (e.g. the n actually drawn)
+     trueValue: number;
+     response: number;
+     signedErrorPct: number;
+     absErrorPct: number;
+     score: number;
    }
    ```
-   The matching React component lives in `src/tasks/[id]/View.tsx`. Both are
-   registered in ONE place: `src/tasks/registry.ts` (one import, one entry),
-   via a `defineTask<P, T, R>(core, View)` helper that erases the generics to
+   The session builds `TrialResult = TrialScore + { taskId, seed, responseMs,
+   timestamp }` — `score()` never sees the seed or timings.
+   The matching React components live in `src/tasks/[id]/View.tsx` and
+   `src/tasks/[id]/Settings.tsx` (props `{ value: P; onChange: (next: P) => void }`).
+   All three are registered in ONE place: `src/tasks/registry.ts` (one import,
+   one entry), via a `defineTask<P, T, R>(core, View, Settings)` helper that erases the generics to
    an `AnyTask` type IN THAT ONE PLACE. Session code only ever sees unknown
    trials/responses. NO `any` and no casts outside that helper. Adding a future
    task type (fractions, angles, area, rotated bars) must never require editing
@@ -117,7 +128,7 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
 
 - `src/core/storage.ts` = pure serialize/parse. A thin wrapper outside core
   touches `localStorage`.
-- Key: `spatial-trainer:v1:rounds`. Bump the version on any breaking schema
+- Key: `spatiasense:v1:rounds`. Bump the version on any breaking schema
   change and write a migration (or explicitly drop old data — document which).
 - Parse defensively: corrupt or unknown-version data is ignored and reported;
   it NEVER crashes the app.
@@ -131,13 +142,18 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
 - **generate:** pick `refLength` (min 30 units) and random `startX` / `trackY`
   such that `startX + n * refLength <= 1000 - 40`. Randomize every trial.
   The true endpoint's x must vary widely — never pick the largest refLength
-  that fits, or the right screen edge becomes a landmark.
+  that fits, or the right screen edge becomes a landmark. The true endpoint
+  also leaves room for a 30% overshoot (`end + 0.3 * trueLength <= 960`) so
+  the marker clamp never censors overshoots.
 - **anchored:** reference bar sits at the start of the answer track (copy 1).
 - **detached:** reference bar drawn elsewhere (different x and y, never
   overlapping the track or confirm UI); track starts at its own marked origin.
+  The reference bar must itself fit inside the viewBox with the 40-unit margin
+  (checked by the 1000-seed fit test).
 - **No landmarks:** no gridlines, ticks, rulers, or anything else to measure by.
 - **Response:** click or drag a marker along the track, adjust, confirm with
-  a button or Enter. Marker x clamped to `[origin, 1000 - 40]`.
+  a button or Enter. Marker x clamped to `[origin, 1000 - 40]`. Dragging uses
+  pointer capture so the marker keeps tracking when the pointer leaves the bar.
 - **score:**
   ```
   trueLength     = n * refLength
@@ -150,7 +166,8 @@ These are non-negotiable. If a change would violate one, stop and ask Ian.
 
 ## Screens
 
-- **Home:** choose n (fixed or random), layout, start a 10-trial round.
+- **Home:** pick a task from the registry, edit params via that task's
+  Settings component, start a 10-trial round. Home has no task-specific controls.
 - **Play:** the task view.
 - **Results:** mean |error|, mean signed bias, best trial, per-trial list.
 - **History:** rounds from localStorage, newest first, mean bias per round.
@@ -171,16 +188,19 @@ src/
     tasks/
       multiply.ts  generate + score for "multiply"
   tasks/
-    registry.ts    THE ONLY place task types are registered
+    registry.ts    THE ONLY place task types are registered (+ defineTask)
+    props.ts       ViewProps / SettingsProps shared by task components
     multiply/
       View.tsx     SVG rendering + input for "multiply"
+      Settings.tsx params form for "multiply"
   screens/
     Home.tsx  Play.tsx  Results.tsx  History.tsx
+  persistence.ts   thin localStorage wrapper around core/storage
   App.tsx          screen switching via state
 ```
 
-Test location: _to be decided in session 1 (colocated `*.test.ts` or
-`src/test/`) — record the choice here and follow it everywhere._
+Test location: colocated `*.test.ts` next to the file under test (matches
+the `src/**/*.test.ts` include in `vite.config.ts`).
 
 ## How to add a new task type
 
@@ -192,10 +212,13 @@ Test location: _to be decided in session 1 (colocated `*.test.ts` or
    known over/undershoot → correct signed error sign and size.
 3. Create `src/tasks/<id>/View.tsx`: render the trial as SVG, convert input
    via `core/geometry.ts`, dispatch actions only. No scoring in the view.
-4. Add ONE entry to `src/tasks/registry.ts` via `defineTask`.
-5. If any step required touching `core/session.ts`, `core/types.ts`,
+4. Create `src/tasks/<id>/Settings.tsx`: a form with props
+   `{ value: P; onChange: (next: P) => void }`. Home renders it generically,
+   starting from `defaultParams`.
+5. Add ONE entry to `src/tasks/registry.ts` via `defineTask(core, View, Settings)`.
+6. If any step required touching `core/session.ts`, `core/types.ts`,
    `core/storage.ts`, or a screen — STOP. The abstraction is wrong; tell Ian.
-6. Update this file: folder map, STATUS, session log.
+7. Update this file: folder map, STATUS, session log.
 
 ---
 
@@ -219,11 +242,23 @@ Only verified facts. Each line says HOW it was verified.
 
 ### Verified
 
-- _(nothing yet — session 1 not run)_
+- `npm run build` passes (tsc strict + vite build) — run at end of session 1.
+- `npm run test`: 39 tests pass — run at end of session 1. Covers: rng
+  determinism; pointer→viewBox at 390px and 1440px widths; scoring math;
+  multiply fit test (1000 seeds × every n × both layouts, incl. detached
+  reference bar and overshoot room); same seed → same trial; signed error
+  sign/size; session state machine incl. ignored illegal actions; storage
+  round-trip and corrupt/unknown-version data; `src/core/` contains no
+  `Math.random`/`Date.now`/React/DOM access (guard test).
+- Dev server boots and serves every module (HTTP 200) — checked via curl.
+- Repo `iangopenbusinessai-lab/spatiasense` is PRIVATE — `gh repo view`.
 
 ### Open / unverified
 
-- Everything in this file is spec, not implementation.
+- UI not yet exercised in a real browser (the Chrome extension was not
+  connected in session 1): drag, pointer capture, Enter-to-confirm, phone
+  layout, and History are unverified by hand.
+- Not deployed; Vercel not yet connected.
 
 ---
 
@@ -231,8 +266,34 @@ Only verified facts. Each line says HOW it was verified.
 
 Choices the spec didn't dictate, with a one-line reason.
 
-- _(session 1 adds entries here)_
+- **`score()` returns `TrialScore`, not `TrialResult`** — score() can't know
+  the seed (session-owned) or timings (action payloads); returning the full
+  TrialResult would force placeholder values like 0 into stored data.
+- **`defineTask(core, View, Settings)`** — each task supplies its own params
+  form; if Home hard-coded n/layout, every new task would mean editing a screen.
+- **Repo stays `iangopenbusinessai-lab/spatiasense`, private** — set via
+  `gh repo edit --visibility private` (it was public).
+- **Tests colocated** as `*.test.ts`. The core purity guard uses
+  `import.meta.glob(..., { query: "?raw" })` so tests need no Node types.
+- **Storage key renamed to `spatiasense:v1:rounds`** — no data existed yet.
+- **multiply generation: total length first, then endpoint** with 30%
+  overshoot room. "Uniform refLength, then uniform start" put 14% of
+  endpoints within 20 units of the edge, and a clamp at the true end censors
+  overshoots → fake undershoot bias. Cost: n=2 bars max ≈354 (not 460).
+- **multiply `trueValue`/`response` are lengths** (from the origin), not x
+  positions — lengths are what bias analysis compares; x = origin + length.
+- **Session phases:** `showing` = trial on screen with no response;
+  first `respond` → `answering`; `confirm` only legal in `answering`.
+  Round id = `${startedAt base36}-${roundSeed base36}`; saving is idempotent by id.
+- **Confirm button is HTML below the SVG**, so the detached reference can
+  never overlap it.
+- **roundSeed** comes from `crypto.getRandomValues` in `App.tsx` (outside core).
 
 ## Session log
 
 - **Session 0 (planning):** spec and this file written. No code exists.
+- **Session 1:** approved TrialScore + defineTask(core, View, Settings) and
+  written into rules; repo set private. Built all of core (rng, types,
+  geometry, scoring, session, storage, multiply) with tests, registry, the
+  multiply View/Settings, and Home/Play/Results/History screens. Changed
+  multiply generation to leave overshoot room (see decisions).
