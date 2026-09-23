@@ -35,8 +35,9 @@ central and (b) preserves data needed for bias-over-time analysis.
 - Plain SVG rendering, Pointer Events for input
 - localStorage for persistence
 - NO UI library, NO chart library, NO router, NO Supabase (yet)
-- Screens are switched by state in `App.tsx` (no router → Vercel needs no
-  rewrite config)
+- Screens are switched by state in `App.tsx`. There's no router, so no SPA
+  404 fallback is needed. If a router is ever added, use hash routing or copy
+  index.html to 404.html in the workflow.
 
 ## Environment
 
@@ -44,12 +45,28 @@ central and (b) preserves data needed for bias-over-time analysis.
   PowerShell. Chain commands with `;` — not `&&` (PowerShell 5.1 lacks it).
 - NEVER run a command that waits for interactive input; it hangs the session.
   Use non-interactive flags, or write files by hand.
-- GitHub: `iangopenbusinessai-lab/spatiasense` (private). `gh` is authenticated.
+- GitHub: `iangopenbusinessai-lab/spatiasense` (PUBLIC — required for Pages on
+  the free plan; visibility is Ian's call, never change it). `gh` is authenticated.
+- Local dev ports: 5199 belongs to another project (strategylab) — use another
+  (5231 worked). `npm run preview` uses 4173.
 
 ## Deploy
 
-Vercel, auto-deploy on `git push` to `main`. Ian connects the repo in the
-Vercel dashboard. NEVER run the Vercel CLI.
+GitHub Pages via GitHub Actions. Push to `main` → `.github/workflows/deploy.yml`
+→ Pages. Live: https://iangopenbusinessai-lab.github.io/spatiasense/
+
+- Build job: checkout → setup-node (Node 24, npm cache) → `npm ci` →
+  `npm run test` → `npm run build` → upload `dist/`. Tests run BEFORE the
+  build, so a failing test never ships. Deploy job: `deploy-pages`.
+- Pages source is "GitHub Actions" (`build_type=workflow`), not a branch.
+- Vite `base` is `/spatiasense/` for build and preview, `/` for dev. Every
+  asset URL must go through Vite (imports, `public/`, or
+  `import.meta.env.BASE_URL`) — a hard-coded root path is a blank page in
+  production. Check with `npm run preview` → http://localhost:4173/spatiasense/.
+- SHARED ORIGIN: every Pages project on this account shares
+  `iangopenbusinessai-lab.github.io` and ONE localStorage. Keys must start
+  with `spatiasense:`; never call `clear()`, never use sessionStorage or
+  IndexedDB. Enforced by `src/storageSafety.test.ts`.
 
 ## Scripts
 
@@ -339,14 +356,23 @@ Only verified facts. Each line says HOW it was verified.
   round-trip and corrupt/unknown-version data; `src/core/` contains no
   `Math.random`/`Date.now`/React/DOM access (guard test).
 - Dev server boots and serves every module (HTTP 200) — checked via curl.
-- Repo `iangopenbusinessai-lab/spatiasense` is PRIVATE — `gh repo view`.
+- Repo `iangopenbusinessai-lab/spatiasense` was PRIVATE after session 1;
+  it is PUBLIC as of the deploy session (`gh repo view`, changed by Ian).
+- Deploy session, local: `npm run test` 171/171 (count includes per-file
+  guard cases) and `npm run build` clean. `npm run preview` →
+  http://localhost:4173/spatiasense/ in Chrome: page, JS and CSS all 200
+  (network log), favicon.svg 200 (curl), no other requests; played one
+  trial (drag + Enter) → "−0.1% — undershot · score 100" with 6 ghosts.
+- Built `dist/index.html` has no root-absolute URL outside `/spatiasense/`
+  (grep).
 
 ### Open / unverified
 
 - UI not yet exercised in a real browser (the Chrome extension was not
   connected in session 1): drag, pointer capture, Enter-to-confirm, phone
   layout, and History are unverified by hand.
-- Not deployed; Vercel not yet connected.
+- LIVE DEPLOY PENDING: workflow and Pages switch not yet run (waiting for
+  Ian's "push"). Live URL, per-job CI result, and live-site play unverified.
 - Insight with REAL played rounds not checked in a browser (only demo data
   and unit tests with stored-round JSON).
 - Trend detection is weak for gradual learning (4% at 200 trials): a design
@@ -427,6 +453,20 @@ Choices the spec didn't dictate, with a one-line reason.
   the Edit tool or raw strings, never escape-processed Python strings.
 - **Dev server port**: 5199 is used by another local project (strategylab);
   use another port (5231 worked). Never kill that server.
+- **Hosting moved from Vercel to GitHub Pages (deploy session).** Vercel was
+  never connected; nothing to tear down.
+- **`base` also applies to `vite preview`** (`isPreview`), not build only:
+  preview serves the built files, and with base "/" it would 404 every asset.
+- **Added `public/favicon.svg` + `<link rel="icon">`**: without it browsers
+  request `/favicon.ico` at the shared account root (404 / another project).
+- **Pages already existed as a legacy branch build** (main, `/`) serving the
+  unbuilt source — a blank page. Switched to `build_type=workflow` right
+  before the first push, not earlier, so the live site isn't left with no
+  deployment while waiting.
+- **Action versions pinned by major** from each repo's latest release
+  (checked via `gh api`, deploy session): checkout@v7, setup-node@v7,
+  upload-pages-artifact@v5, deploy-pages@v5. No configure-pages step: Pages
+  is configured once via the API.
 - **roundSeed** comes from `crypto.getRandomValues` in `App.tsx` (outside core).
 
 ## Session log
@@ -442,3 +482,6 @@ Choices the spec didn't dictate, with a one-line reason.
   chartMath, BiasChart/TrendChart, Insight screen with dev demo. 7 commits
   (5119d8b…b339751), not pushed. Rates measured and recorded in STATUS.
   Fixed the silently broken purity guard from session 1.
+- **Deploy session:** Vercel → GitHub Pages via Actions; Vite base path;
+  favicon; shared-origin storage guard test; CLAUDE.md deploy flow. Found
+  the repo PUBLIC (Ian's change) and Pages already on a legacy branch build.
