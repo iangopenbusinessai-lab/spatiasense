@@ -1,6 +1,6 @@
 import type { RoundPoint } from "../../core/insight";
 import { linearScale, niceTicks, rollingMean, symmetricAxis } from "../../lib/chartMath";
-import { CHART, ChartSvg, SignedYAxis, ZeroLine, plotBottom, plotLeft, plotRight, plotTop } from "./ChartFrame";
+import { ChartSvg, SignedYAxis, ZeroLine, axisTitleY, plotBottom, plotLeft, plotRight, plotTop, xTickY } from "./ChartFrame";
 
 const MIN_AXIS_HALF_PCT = 10;
 const X_PAD = 10;
@@ -31,11 +31,11 @@ export function TrendChart({ points, rollingWindow }: TrendChartProps) {
       <ChartSvg label={`Mean signed bias for each of ${points.length} rounds, oldest first.`}>
         <SignedYAxis ticks={axis.ticks} y={y} />
         {xTicks.map((t) => (
-          <text key={t} className="tick" x={x(t)} y={plotBottom + 30} textAnchor="middle">
+          <text key={t} className="tick" x={x(t)} y={xTickY} textAnchor="middle">
             {t}
           </text>
         ))}
-        <text className="axis-title" x={(plotLeft + plotRight) / 2} y={CHART.height - 2} textAnchor="middle">
+        <text className="axis-title" x={(plotLeft + plotRight) / 2} y={axisTitleY} textAnchor="middle">
           round
         </text>
         <ZeroLine y={y} />

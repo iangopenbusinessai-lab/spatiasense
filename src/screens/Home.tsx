@@ -8,9 +8,10 @@ interface HomeProps {
   onParamsChange: (next: unknown) => void;
   onStart: () => void;
   onHistory: () => void;
+  onInsight: () => void;
 }
 
-export function Home({ task, params, trialCount, onSelectTask, onParamsChange, onStart, onHistory }: HomeProps) {
+export function Home({ task, params, trialCount, onSelectTask, onParamsChange, onStart, onHistory, onInsight }: HomeProps) {
   const { Settings } = task;
   return (
     <section className="screen home">
@@ -37,6 +38,7 @@ export function Home({ task, params, trialCount, onSelectTask, onParamsChange, o
         <button className="primary" onClick={onStart}>
           Start {trialCount}-trial round
         </button>
+        <button onClick={onInsight}>Your bias</button>
         <button onClick={onHistory}>History</button>
       </div>
     </section>

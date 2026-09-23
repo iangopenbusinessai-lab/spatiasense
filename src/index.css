@@ -129,7 +129,7 @@ button.quiet { padding: 6px 12px; }
   :root { --series-0: #7c9cff; --series-1: #f0955a; --series-2: #48c88c; }
 }
 .chart-figure { margin: 0 0 24px; }
-.chart { display: block; width: 100%; max-width: 640px; height: auto; background: var(--panel); border-radius: 10px; }
+.chart { display: block; width: 100%; max-width: 560px; height: auto; background: var(--panel); border-radius: 10px; }
 .chart .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 3 4; }
 .chart .zero { stroke: var(--fg); stroke-width: 2.5; }
 .chart .tick { fill: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
@@ -146,3 +146,15 @@ button.quiet { padding: 6px 12px; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; }
 .legend-mark { width: 14px; height: 14px; }
 .legend-mark .mark { stroke-width: 2; }
+
+.findings { list-style: none; padding: 0; margin: 16px 0 8px; display: grid; gap: 8px; }
+.finding { background: var(--panel); border: 1px solid var(--line); border-left-width: 4px; border-radius: 8px; padding: 10px 12px; font-size: 1.05rem; }
+.finding-bias { border-left-color: var(--over); }
+.finding-accurate { border-left-color: var(--true); }
+.finding-trend { border-left-color: var(--accent); }
+.finding-needsData, .quiet-finding { border-left-color: var(--line); color: var(--muted); }
+.chart-controls { display: flex; flex-wrap: wrap; gap: 12px 20px; margin-bottom: 10px; }
+.field.inline { display: flex; align-items: center; gap: 8px; }
+.table-scroll { overflow-x: auto; }
+.trials tr.thin td { color: var(--muted); }
+.table-scroll td, .table-scroll th { white-space: nowrap; }

@@ -1,6 +1,6 @@
 import type { GroupStats, DimValue } from "../../core/insight";
 import { bandCenters, linearScale, symmetricAxis } from "../../lib/chartMath";
-import { CHART, ChartSvg, SignedYAxis, ZeroLine, plotBottom, plotLeft, plotRight, plotTop } from "./ChartFrame";
+import { ChartSvg, SignedYAxis, ZeroLine, axisTitleY, plotBottom, plotLeft, plotRight, plotTop, xTickY } from "./ChartFrame";
 
 /** Smallest y half-range, so a handful of tiny errors doesn't look dramatic. */
 const MIN_AXIS_HALF_PCT = 10;
@@ -60,11 +60,11 @@ export function BiasChart({ groups, xLabel, seriesLabel, minTrials }: BiasChartP
       <ChartSvg label={`Signed bias by ${xLabel}. ${summary}`}>
         <SignedYAxis ticks={axis.ticks} y={y} />
         {xValues.map((v, i) => (
-          <text key={keyOf(v)} className="tick" x={centers[i]} y={plotBottom + 30} textAnchor="middle">
+          <text key={keyOf(v)} className="tick" x={centers[i]} y={xTickY} textAnchor="middle">
             {String(v)}
           </text>
         ))}
-        <text className="axis-title" x={(plotLeft + plotRight) / 2} y={CHART.height - 2} textAnchor="middle">
+        <text className="axis-title" x={(plotLeft + plotRight) / 2} y={axisTitleY} textAnchor="middle">
           {xLabel}
         </text>
         {groups.map((g) => {
@@ -91,7 +91,7 @@ export function BiasChart({ groups, xLabel, seriesLabel, minTrials }: BiasChartP
       </ChartSvg>
       <figcaption className="legend">
         {seriesLabel && seriesValues.length > 1 && (
-          <span>
+          <>
             {seriesValues.map((v, i) => (
               <span key={keyOf(v)} className="legend-item">
                 <svg viewBox="-8 -8 16 16" className="legend-mark" aria-hidden="true">
@@ -100,7 +100,7 @@ export function BiasChart({ groups, xLabel, seriesLabel, minTrials }: BiasChartP
                 {seriesLabel} {String(v)}
               </span>
             ))}
-          </span>
+          </>
         )}
         <span className="legend-item">
           <svg viewBox="-8 -8 16 16" className="legend-mark" aria-hidden="true">

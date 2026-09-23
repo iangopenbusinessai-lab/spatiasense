@@ -3,13 +3,18 @@ import { signedTickLabel, type Scale } from "../../lib/chartMath";
 
 /** Shared chart geometry, in viewBox units. Sized so labels stay readable at 390px. */
 export const CHART = {
-  width: 420,
+  width: 380,
   height: 270,
   top: 22,
-  right: 12,
-  bottom: 44,
-  left: 52,
+  right: 10,
+  bottom: 56,
+  left: 50,
 } as const;
+
+/** Rows below the plot: direction word, x tick labels, axis title. */
+export const directionY = CHART.height - CHART.bottom + 15;
+export const xTickY = CHART.height - CHART.bottom + 33;
+export const axisTitleY = CHART.height - 4;
 
 export const plotLeft = CHART.left;
 export const plotRight = CHART.width - CHART.right;
@@ -36,7 +41,7 @@ export function SignedYAxis({ ticks, y }: SignedYAxisProps) {
       <text className="direction" x={plotLeft + 4} y={plotTop - 8}>
         ↑ overshoot
       </text>
-      <text className="direction" x={plotLeft + 4} y={plotBottom + 14}>
+      <text className="direction" x={plotLeft + 4} y={directionY}>
         ↓ undershoot
       </text>
     </g>

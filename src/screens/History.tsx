@@ -6,9 +6,10 @@ import { pct } from "./Results";
 
 interface HistoryProps {
   onBack: () => void;
+  onInsight: () => void;
 }
 
-export function History({ onBack }: HistoryProps) {
+export function History({ onBack, onInsight }: HistoryProps) {
   const { rounds, problems } = useMemo(() => loadRounds(), []);
   const newestFirst = [...rounds].sort((a, b) => b.finishedAt - a.finishedAt);
 
@@ -50,6 +51,7 @@ export function History({ onBack }: HistoryProps) {
       )}
       <div className="actions">
         <button onClick={onBack}>Back</button>
+        <button onClick={onInsight}>Your bias</button>
       </div>
     </section>
   );

@@ -7,11 +7,12 @@ interface ResultsProps {
   saveFailed: boolean;
   onAgain: () => void;
   onHome: () => void;
+  onInsight: () => void;
 }
 
 export const pct = (v: number) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(1)}%`;
 
-export function Results({ label, results, saveFailed, onAgain, onHome }: ResultsProps) {
+export function Results({ label, results, saveFailed, onAgain, onHome, onInsight }: ResultsProps) {
   const s = summarize(results);
   const best = results[s.bestIndex];
   return (
@@ -71,6 +72,7 @@ export function Results({ label, results, saveFailed, onAgain, onHome }: Results
         <button className="primary" onClick={onAgain}>
           Play again
         </button>
+        <button onClick={onInsight}>Your bias</button>
         <button onClick={onHome}>Home</button>
       </div>
     </section>

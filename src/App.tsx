@@ -2,6 +2,7 @@ import { useEffect, useReducer, useState } from "react";
 import { initialSession, sessionReducer, toRoundRecord } from "./core/session";
 import { saveRound } from "./persistence";
 import { History } from "./screens/History";
+import { Insight } from "./screens/Insight";
 import { Home } from "./screens/Home";
 import { Play } from "./screens/Play";
 import { Results } from "./screens/Results";
@@ -18,7 +19,7 @@ export function App() {
   if (!firstTask) throw new Error("No tasks registered");
 
   const [session, dispatch] = useReducer(sessionReducer, initialSession);
-  const [idleScreen, setIdleScreen] = useState<"home" | "history">("home");
+  const [idleScreen, setIdleScreen] = useState<"home" | "history" | "insight">("home");
   const [taskId, setTaskId] = useState(firstTask.core.id);
   const [paramsByTask, setParamsByTask] = useState<Record<string, unknown>>({});
   const [saveFailed, setSaveFailed] = useState(false);
@@ -48,8 +49,9 @@ export function App() {
 
   switch (session.phase) {
     case "idle":
+      if (idleScreen === "insight") return <Insight onBack={() => setIdleScreen("home")} />;
       return idleScreen === "history" ? (
-        <History onBack={() => setIdleScreen("home")} />
+        <History onBack={() => setIdleScreen("home")} onInsight={() => setIdleScreen("insight")} />
       ) : (
         <Home
           task={task}
@@ -59,6 +61,7 @@ export function App() {
           onParamsChange={(next) => setParamsByTask((m) => ({ ...m, [task.core.id]: next }))}
           onStart={start}
           onHistory={() => setIdleScreen("history")}
+          onInsight={() => setIdleScreen("insight")}
         />
       );
     case "showing":
@@ -74,7 +77,14 @@ export function App() {
           results={session.results}
           saveFailed={saveFailed}
           onAgain={start}
-          onHome={() => dispatch({ type: "quit" })}
+          onHome={() => {
+            setIdleScreen("home");
+            dispatch({ type: "quit" });
+          }}
+          onInsight={() => {
+            setIdleScreen("insight");
+            dispatch({ type: "quit" });
+          }}
         />
       );
   }
